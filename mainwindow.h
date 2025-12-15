@@ -125,6 +125,7 @@ private:
     
     Ui::MainWindow *ui;           // UI界面指针
     QTimer* refreshTimer;         // 刷新定时器指针
+    QTimer* pollTimer;            // 轮询定时器指针
     QMap<QString, QString> dataMap;     // 存储各标签的数据（标签名 -> 数据内容）
     int refreshRate;              // 刷新频率（毫秒）
     QSerialPort* serialPort;      // 串口对象指针
