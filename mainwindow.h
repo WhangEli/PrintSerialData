@@ -106,6 +106,13 @@ private slots:
      * 当串口有数据可读时自动调用，读取串口数据并更新显示
      */
     void onSerialDataReceived();
+    
+    /**
+     * @brief 轮询检查串口数据
+     * 
+     * 用于轮询方式检查串口是否有新数据
+     */
+    void pollSerialData();
 
 private:
     /**
