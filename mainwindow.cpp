@@ -14,6 +14,7 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <QDebug>
 
 /**
  * @brief 构造函数
@@ -201,8 +202,8 @@ void MainWindow::initSerialPort()
     
     // 设置串口参数
     if (serialPort->open(QIODevice::ReadOnly)) {
-        // 设置波特率1500000
-        serialPort->setBaudRate(QSerialPort::Baud1500000);
+        // 设置波特率1500000（使用自定义波特率）
+        serialPort->setBaudRate(1500000);
         
         // 设置数据位8位
         serialPort->setDataBits(QSerialPort::Data8);
@@ -256,5 +257,4 @@ void MainWindow::onSerialDataReceived()
             }
         }
     }
-}
 }
