@@ -2,8 +2,14 @@
  * @file mainwindow.cpp
  * @brief MainWindow类的实现文件
  * 
- * 该文件包含了支持多标签的数据显示屏的具体实现，
- * 包括标签管理、数值数据接收、定时刷新和界面显示等功能。
+ * 该文件包含了串口数据接收和显示的具体实现，
+ * 包括串口初始化、数据接收、定时刷新和界面显示等功能。
+ * 
+ * 主要功能：
+ * 1. 自动检测并打开串口设备（USB-UART）
+ * 2. 接收串口数据并实时显示
+ * 3. 支持自定义刷新频率
+ * 4. 显示格式："接收的消息：数据内容"
  */
 
 #include "mainwindow.h"
@@ -13,13 +19,15 @@
  * @brief 构造函数
  * @param parent 父窗口指针
  * 
- * 初始化成员变量，创建定时器并连接信号槽，
- * 设置默认刷新频率为1秒，启动定时器。
+ * 初始化成员变量，创建定时器和串口对象，
+ * 设置默认刷新频率为1秒，初始化串口并启动定时器。
+ * 串口初始化包括自动检测和打开USB-UART设备。
  */
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , refreshRate(1000)  // 默认1秒刷新一次
+    , serialPort(nullptr) // 串口对象初始化为空
 {
     ui->setupUi(this);
     
@@ -29,11 +37,14 @@ MainWindow::MainWindow(QWidget *parent)
     // 连接定时器的timeout信号到刷新处理槽函数
     connect(refreshTimer, &QTimer::timeout, this, &MainWindow::onRefreshTimeout);
     
+    // 初始化串口通信
+    initSerialPort();
+    
     // 启动定时器，按照设定的频率开始刷新
     refreshTimer->start(refreshRate);
     
     // 设置窗口标题
-    setWindowTitle("数据显示屏");
+    setWindowTitle("串口数据接收显示");
 }
 
 /**
@@ -114,42 +125,136 @@ void MainWindow::updateData(const QString& tagName, const QString& value)
  * @brief 定时器超时处理槽函数
  * 
  * 当定时器超时时自动调用，负责更新界面显示内容。
- * 显示所有标签的当前数据，然后清空所有数据。
- * 
- * 显示格式：每个标签占一行，格式为"标签名：数据内容"
- * 例如：
- * A：1
- * B：正常
- * 温度：25°C
- * 状态：运行中
+ * 显示"接收的消息：数据内容"，如果数据为空则只显示标签名。
+ * 显示完成后清空数据，确保下次刷新时正确处理。
  */
 void MainWindow::onRefreshTimeout()
 {
     if (!dataMap.isEmpty()) {
         QString displayText;
         
-        // 构建显示文本，每个标签占一行
-        for (auto it = dataMap.begin(); it != dataMap.end(); ++it) {
+        // 构建显示文本，只处理"接收的消息"标签
+        auto it = dataMap.find("接收的消息");
+        if (it != dataMap.end()) {
             QString tagName = it.key();
             QString value = it.value();
+            
+            // 显示格式：标签名 + 数据内容（如果数据为空，只显示标签名）
             if (!value.isEmpty()) {
-                displayText += QString("%1：%2\n").arg(tagName).arg(value);
+                displayText = QString("%1：%2").arg(tagName).arg(value);
+            } else {
+                displayText = QString("%1：").arg(tagName);
             }
         }
         
-        // 显示数据（去除末尾换行符）
-        if (!displayText.isEmpty()) {
-            ui->dataDisplayLabel->setText(displayText.trimmed());
-        } else {
-            ui->dataDisplayLabel->setText("");
-        }
+        // 显示数据
+        ui->dataDisplayLabel->setText(displayText);
         
-        // 清空所有数据，确保下次刷新时显示为空
-        for (auto it = dataMap.begin(); it != dataMap.end(); ++it) {
-            it.value() = "";  // 清空数据内容
-        }
+        // 清空数据，确保下次刷新时正确处理
+        it.value() = "";
     } else {
         // 没有标签时显示为空
         ui->dataDisplayLabel->setText("");
     }
+}
+
+/**
+ * @brief 初始化串口
+ * 
+ * 自动检测系统中可用的串口设备，优先选择USB-UART设备（通常是/dev/ttyUSB0），
+ * 设置串口参数：波特率1500000，数据位8，停止位1，无校验位，
+ * 并连接数据接收信号槽。
+ */
+void MainWindow::initSerialPort()
+{
+    // 创建串口对象
+    serialPort = new QSerialPort(this);
+    
+    // 获取系统中所有可用的串口信息
+    QList<QSerialPortInfo> availablePorts = QSerialPortInfo::availablePorts();
+    
+    if (availablePorts.isEmpty()) {
+        qWarning() << "未找到可用的串口设备！";
+        return;
+    }
+    
+    // 优先选择USB-UART设备（通常是ttyUSB0）
+    QString portName;
+    for (const QSerialPortInfo& portInfo : availablePorts) {
+        if (portInfo.portName().contains("USB", Qt::CaseInsensitive) || 
+            portInfo.description().contains("USB", Qt::CaseInsensitive) ||
+            portInfo.description().contains("UART", Qt::CaseInsensitive)) {
+            portName = portInfo.portName();
+            qDebug() << "找到USB-UART串口设备：" << portName << "描述：" << portInfo.description();
+            break;
+        }
+    }
+    
+    // 如果没有找到USB设备，使用第一个可用串口
+    if (portName.isEmpty()) {
+        portName = availablePorts.first().portName();
+        qDebug() << "使用第一个可用串口：" << portName << "描述：" << availablePorts.first().description();
+    }
+    
+    // 设置串口名称
+    serialPort->setPortName(portName);
+    
+    // 设置串口参数
+    if (serialPort->open(QIODevice::ReadOnly)) {
+        // 设置波特率1500000
+        serialPort->setBaudRate(QSerialPort::Baud1500000);
+        
+        // 设置数据位8位
+        serialPort->setDataBits(QSerialPort::Data8);
+        
+        // 设置停止位1位
+        serialPort->setStopBits(QSerialPort::OneStop);
+        
+        // 设置无校验位
+        serialPort->setParity(QSerialPort::NoParity);
+        
+        // 设置无流控制
+        serialPort->setFlowControl(QSerialPort::NoFlowControl);
+        
+        // 连接串口数据接收信号槽
+        connect(serialPort, &QSerialPort::readyRead, this, &MainWindow::onSerialDataReceived);
+        
+        qDebug() << "串口" << portName << "打开成功，参数：波特率1500000，8N1";
+        
+        // 初始化标签
+        dataMap["接收的消息"] = "";  // 添加接收消息标签
+        
+    } else {
+        qWarning() << "无法打开串口" << portName << "错误：" << serialPort->errorString();
+        
+        // 即使串口打开失败，也初始化标签用于显示
+        dataMap["接收的消息"] = "";
+    }
+}
+
+/**
+ * @brief 串口数据接收槽函数
+ * 
+ * 当串口有数据可读时自动调用，读取所有可用数据，
+ * 并将数据更新到"接收的消息"标签中。
+ */
+void MainWindow::onSerialDataReceived()
+{
+    if (serialPort && serialPort->isOpen()) {
+        // 读取所有可用数据
+        QByteArray data = serialPort->readAll();
+        
+        if (!data.isEmpty()) {
+            // 将字节数组转换为字符串（去除末尾换行符）
+            QString receivedData = QString::fromUtf8(data).trimmed();
+            
+            if (!receivedData.isEmpty()) {
+                qDebug() << "接收到串口数据：" << receivedData;
+                
+                // 更新标签数据
+                updateData("接收的消息", receivedData);
+            }
+        }
+    }
+}
 }
