@@ -126,8 +126,8 @@ void MainWindow::updateData(const QString& tagName, const QString& value)
  * @brief 定时器超时处理槽函数
  * 
  * 当定时器超时时自动调用，负责更新界面显示内容。
- * 显示"接收的消息：数据内容"，保持上次接收到的数据显示，
- * 直到收到新数据才更新显示内容。
+ * 显示"接收的消息：数据内容"，如果数据为空则只显示标签名。
+ * 显示完成后清空数据，确保下次刷新时正确处理。
  */
 void MainWindow::onRefreshTimeout()
 {
@@ -146,10 +146,13 @@ void MainWindow::onRefreshTimeout()
             } else {
                 displayText = QString("%1：").arg(tagName);
             }
-            
-            // 显示数据
-            ui->dataDisplayLabel->setText(displayText);
         }
+        
+        // 显示数据
+        ui->dataDisplayLabel->setText(displayText);
+        
+        // 清空数据，确保下次刷新时正确处理
+        it.value() = "";
     } else {
         // 没有标签时显示为空
         ui->dataDisplayLabel->setText("");
@@ -233,15 +236,17 @@ void MainWindow::initSerialPort()
 /**
  * @brief 串口数据接收槽函数
  * 
- * 当串口接收到新数据时自动调用，负责读取并处理接收到的数据。
- * 接收到新数据后立即更新界面显示，保持数据显示直到收到下一个新数据。
+ * 当串口有数据可读时自动调用，读取所有可用数据，
+ * 并将数据更新到"接收的消息"标签中。
  */
 void MainWindow::onSerialDataReceived()
 {
     if (serialPort && serialPort->isOpen()) {
+        // 读取所有可用数据
         QByteArray data = serialPort->readAll();
         
         if (!data.isEmpty()) {
+            // 将字节数组转换为字符串（去除末尾换行符）
             QString receivedData = QString::fromUtf8(data).trimmed();
             
             if (!receivedData.isEmpty()) {
@@ -249,12 +254,6 @@ void MainWindow::onSerialDataReceived()
                 
                 // 更新标签数据
                 updateData("接收的消息", receivedData);
-                
-                // 立即更新显示，不需要等待定时器
-                if (ui && ui->dataDisplayLabel) {
-                    QString displayText = QString("接收的消息：%1").arg(receivedData);
-                    ui->dataDisplayLabel->setText(displayText);
-                }
             }
         }
     }
