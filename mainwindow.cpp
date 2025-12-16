@@ -27,8 +27,6 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , refreshTimer(nullptr)
-    , pollTimer(nullptr)
     , refreshRate(1000)  // 默认1秒刷新一次
     , serialPort(nullptr) // 串口对象初始化为空
 {
@@ -48,8 +46,6 @@ MainWindow::MainWindow(QWidget *parent)
     
     // 设置窗口标题
     setWindowTitle("串口数据接收显示");
-}
-
 /**
  * @brief 轮询检查串口数据
  * 
@@ -87,17 +83,6 @@ void MainWindow::pollSerialData()
  */
 MainWindow::~MainWindow()
 {
-    // 停止轮询定时器
-    if (pollTimer) {
-        pollTimer->stop();
-        delete pollTimer;
-    }
-    
-    // 关闭串口
-    if (serialPort && serialPort->isOpen()) {
-        serialPort->close();
-    }
-    
     delete ui;
 }
 
@@ -261,22 +246,21 @@ void MainWindow::initSerialPort()
     connect(serialPort, &QSerialPort::readyRead, this, &MainWindow::onSerialDataReceived);
     
     // 启动轮询定时器，定期检查串口数据（100ms检查一次）
-    if (!pollTimer) {
-        pollTimer = new QTimer(this);
-        connect(pollTimer, &QTimer::timeout, this, &MainWindow::pollSerialData);
-        pollTimer->start(100);
-    }
+    QTimer* pollTimer = new QTimer(this);
+    connect(pollTimer, &QTimer::timeout, this, &MainWindow::pollSerialData);
+    pollTimer->start(100);
     
     qDebug() << "串口" << portName << "打开成功，参数：波特率1500000，8N1，轮询模式启动";
-    
-    // 初始化标签
-    dataMap["接收的消息"] = "";  // 添加接收消息标签
-    
-} else {
-    qWarning() << "无法打开串口" << portName << "错误：" << serialPort->errorString();
-    
-    // 即使串口打开失败，也初始化标签用于显示
-    dataMap["接收的消息"] = "";
+        
+        // 初始化标签
+        dataMap["接收的消息"] = "";  // 添加接收消息标签
+        
+    } else {
+        qWarning() << "无法打开串口" << portName << "错误：" << serialPort->errorString();
+        
+        // 即使串口打开失败，也初始化标签用于显示
+        dataMap["接收的消息"] = "";
+    }
 }
 
 /**
