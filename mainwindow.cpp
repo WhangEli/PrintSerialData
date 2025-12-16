@@ -46,34 +46,6 @@ MainWindow::MainWindow(QWidget *parent)
     
     // 设置窗口标题
     setWindowTitle("串口数据接收显示");
-/**
- * @brief 轮询检查串口数据
- * 
- * 定期主动检查串口是否有数据可读，不依赖readyRead信号。
- * 解决readyRead信号在某些硬件环境下不触发的问题。
- */
-void MainWindow::pollSerialData()
-{
-    if (serialPort && serialPort->isOpen() && serialPort->bytesAvailable() > 0) {
-        QByteArray data = serialPort->readAll();
-        
-        if (!data.isEmpty()) {
-            QString receivedData = QString::fromUtf8(data).trimmed();
-            
-            if (!receivedData.isEmpty()) {
-                qDebug() << "轮询接收到串口数据：" << receivedData;
-                
-                // 更新标签数据
-                updateData("接收的消息", receivedData);
-                
-                // 立即更新显示
-                if (ui && ui->dataDisplayLabel) {
-                    QString displayText = QString("接收的消息：%1").arg(receivedData);
-                    ui->dataDisplayLabel->setText(displayText);
-                }
-            }
-        }
-    }
 }
 
 /**
@@ -242,15 +214,10 @@ void MainWindow::initSerialPort()
         // 设置无流控制
         serialPort->setFlowControl(QSerialPort::NoFlowControl);
         
-    // 连接串口数据接收信号槽（备用，轮询方式将作为主要读取方式）
-    connect(serialPort, &QSerialPort::readyRead, this, &MainWindow::onSerialDataReceived);
-    
-    // 启动轮询定时器，定期检查串口数据（100ms检查一次）
-    QTimer* pollTimer = new QTimer(this);
-    connect(pollTimer, &QTimer::timeout, this, &MainWindow::pollSerialData);
-    pollTimer->start(100);
-    
-    qDebug() << "串口" << portName << "打开成功，参数：波特率1500000，8N1，轮询模式启动";
+        // 连接串口数据接收信号槽
+        connect(serialPort, &QSerialPort::readyRead, this, &MainWindow::onSerialDataReceived);
+        
+        qDebug() << "串口" << portName << "打开成功，参数：波特率1500000，8N1";
         
         // 初始化标签
         dataMap["接收的消息"] = "";  // 添加接收消息标签
