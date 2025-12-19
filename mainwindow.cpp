@@ -1,147 +1,30 @@
-/**
- * @file mainwindow.cpp
- * @brief MainWindow类的实现文件
- * 
- * 该文件包含了串口数据接收和显示的具体实现，
- * 包括串口初始化、数据接收、定时刷新和界面显示等功能。
- * 
- * 主要功能：
- * 1. 自动检测并打开串口设备（USB-UART）
- * 2. 接收串口数据并实时显示
- * 3. 支持自定义刷新频率
- * 4. 显示格式："接收的消息：数据内容"
- */
-
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QDebug>
 
-/**
- * @brief 构造函数
- * @param parent 父窗口指针
- * 
- * 初始化成员变量，创建定时器和串口对象，
- * 设置默认刷新频率为1秒，初始化串口并启动定时器。
- * 串口初始化包括自动检测和打开USB-UART设备。
- */
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , refreshRate(1000)  // 默认1秒刷新一次
     , serialPort(nullptr) // 串口对象初始化为空
 {
     ui->setupUi(this);
     
-    // 创建定时器对象，用于控制显示刷新频率
-    refreshTimer = new QTimer(this);
-    
-    // 连接定时器的timeout信号到刷新处理槽函数
-    connect(refreshTimer, &QTimer::timeout, this, &MainWindow::onRefreshTimeout);
-    
-    // 初始化串口通信
     initSerialPort();
-    
-    // 启动定时器，按照设定的频率开始刷新
-    refreshTimer->start(refreshRate);
     
     // 设置窗口标题
     setWindowTitle("串口数据接收显示");
 }
 
-/**
- * @brief 析构函数
- * 
- * 释放UI对象占用的内存资源
- */
 MainWindow::~MainWindow()
 {
     delete ui;
 }
 
-/**
- * @brief 设置显示刷新频率
- * @param msec 刷新间隔时间（毫秒）
- * 
- * 动态修改显示刷新频率，会先停止当前定时器，
- * 然后以新的频率重新启动定时器。
- * 
- * 注意：如果定时器当前未激活，则只更新频率值，不重启定时器
- */
-void MainWindow::setRefreshRate(int msec)
+void MainWindow::updateData(const QString& value)
 {
-    refreshRate = msec;
-    if (refreshTimer->isActive()) {
-        refreshTimer->stop();
-        refreshTimer->start(refreshRate);
-    }
+    ui->dataDisplayLabel->setText(QString("接收的数据：%1").arg(value));
 }
 
-/**
- * @brief 添加一个标签
- * @param tagName 标签名称
- * 
- * 向数据映射中添加一个新的标签，初始数据为空字符串
- */
-void MainWindow::addTag(const QString& tagName)
-{
-    dataMap[tagName] = "";
-}
-
-/**
- * @brief 批量设置标签
- * @param tagNames 标签名称列表
- * 
- * 一次性设置多个标签，会清除之前的所有标签和数据
- */
-void MainWindow::setTags(const QStringList& tagNames)
-{
-    dataMap.clear();  // 清除现有标签和数据
-    for (const QString& tagName : tagNames) {
-        dataMap[tagName] = "";  // 添加新标签，初始值为空字符串
-    }
-}
-
-/**
- * @brief 更新指定标签的数据
- * @param tagName 标签名称
- * @param value 数据内容（可以是数值、字符串等各种类型）
- * 
- * 将指定标签的数据更新为给定值，数据会保存在内存中，
- * 等待下次定时器刷新时显示到界面上。
- * 
- * 支持各种数据类型：
- * - 数值："1", "25", "100"
- * - 字符串："正常", "异常", "运行中"
- * - 带单位："25°C", "100Pa", "50%"
- * - 状态信息："开启", "关闭", "故障"
- */
-void MainWindow::updateData(const QString& tagName, const QString& value)
-{
-    if (dataMap.contains(tagName)) {
-        dataMap[tagName] = value;
-    }
-}
-
-/**
- * @brief 定时器超时处理槽函数
- * 
- * 定时器超时处理，但只在串口接收到新数据时更新界面显示。
- * 其他情况下不更新界面，避免不必要的刷新。
- */
-void MainWindow::onRefreshTimeout()
-{
-    // 定时器超时处理，但不主动更新界面显示
-    // 界面显示只在串口接收到新数据时更新
-    // 这样可以避免界面不必要的刷新
-}
-
-/**
- * @brief 初始化串口
- * 
- * 设置固定串口设备/dev/ttyS3，
- * 设置串口参数：波特率115200，数据位8，停止位1，无校验位，
- * 并连接数据接收信号槽。
- */
 void MainWindow::initSerialPort()
 {
     // 创建串口对象
@@ -173,24 +56,12 @@ void MainWindow::initSerialPort()
         connect(serialPort, &QSerialPort::readyRead, this, &MainWindow::onSerialDataReceived);
         
         qDebug() << "串口" << portName << "打开成功，参数：波特率115200，8N1";
-        
-        // 初始化标签
-        dataMap["接收的数据"] = "";  // 添加接收数据标签
-        
-    } else {
-        qWarning() << "无法打开串口" << portName << "错误：" << serialPort->errorString();
-        
-        // 即使串口打开失败，也初始化标签用于显示
-        dataMap["接收的数据"] = "";
+    }
+    else {
+            qWarning() << "无法打开串口" << portName << "错误：" << serialPort->errorString();
     }
 }
 
-/**
- * @brief 串口数据接收槽函数
- * 
- * 当串口接收到新数据时自动调用，负责从/dev/ttyS3读取并处理接收到的数据。
- * 接收到新数据后立即更新界面显示，保持数据显示直到收到下一个新数据。
- */
 void MainWindow::onSerialDataReceived()
 {
     if (serialPort && serialPort->isOpen()) {
@@ -207,14 +78,8 @@ void MainWindow::onSerialDataReceived()
                 if (!lines.isEmpty()) {
                     QString latestData = lines.last().trimmed();
                     if (!latestData.isEmpty()) {
-                        // 更新标签数据
-                        updateData("接收的数据", latestData);
-                        
-                        // 立即更新显示，不需要等待定时器
-                        if (ui && ui->dataDisplayLabel) {
-                            QString displayText = QString("接收的数据：%1").arg(latestData);
-                            ui->dataDisplayLabel->setText(displayText);
-                        }
+                        // 更新数据
+                        updateData(latestData);
                     }
                 }
             }
