@@ -3,7 +3,6 @@
 
 #include <QMainWindow>
 #include <QString>
-#include <QMap>
 #include <QSerialPort>
 
 QT_BEGIN_NAMESPACE
@@ -24,11 +23,12 @@ public:
 
 private slots:
     void onSerialDataReceived();
+    void sendResponse();
 
 private:
     void initSerialPort();
-    
-    Ui::MainWindow *ui;
+
+    Ui::MainWindow* ui;
     QSerialPort* serialPort;      // 串口对象指针
 };
 #endif // MAINWINDOW_H

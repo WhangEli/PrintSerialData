@@ -1,6 +1,7 @@
-#include "mainwindow.h"
-#include "ui_mainwindow.h"
+#include "MainWindow.h"
+#include "ui_MainWindow.h"
 #include <QDebug>
+#include <QTimer>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -33,10 +34,10 @@ void MainWindow::initSerialPort()
     // 设置固定串口设备路径
     QString portName = "/dev/ttyS3";
     serialPort->setPortName(portName);
-    qDebug() << "使用固定串口设备：" << portName;
+    qDebug() << "使用固定串口：" << portName;
     
     // 设置串口参数
-    if (serialPort->open(QIODevice::ReadOnly)) {
+    if (serialPort->open(QIODevice::ReadWrite)) {
         // 设置波特率115200
         serialPort->setBaudRate(115200);
         
@@ -80,9 +81,26 @@ void MainWindow::onSerialDataReceived()
                     if (!latestData.isEmpty()) {
                         // 更新数据
                         updateData(latestData);
+                        //避免冲突，延时10ms发送响应
+                        QTimer::singleShot(10, this, &MainWindow::sendResponse);
                     }
                 }
             }
+        }
+    }
+}
+
+void MainWindow::sendResponse()
+{
+    if (serialPort && serialPort->isOpen() && serialPort->isWritable()) {
+        QByteArray response = "1";
+
+        qint64 bytesWritten = serialPort->write(response);
+        if (bytesWritten == -1) {
+            qWarning() << "发送响应失败：" << serialPort->errorString();
+        } else {
+            qDebug() << "成功发送响应：" << response;
+            serialPort->flush();  // 确保数据立即发送
         }
     }
 }
