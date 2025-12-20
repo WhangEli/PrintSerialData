@@ -23,7 +23,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::updateData(const QString& value)
 {
-    ui->dataDisplayLabel->setText(QString("接收的数据：%1").arg(value));
+    ui->dataLabel->setText(QString("接收的数据：%1").arg(value));
 }
 
 void MainWindow::initSerialPort()
@@ -31,10 +31,10 @@ void MainWindow::initSerialPort()
     // 创建串口对象
     serialPort = new QSerialPort(this);
     
-    // 设置固定串口设备路径
-    QString portName = "/dev/ttyS3";
-    serialPort->setPortName(portName);
-    qDebug() << "使用固定串口：" << portName;
+    // 设置固定串口通道
+    QString serialPortPath = "/dev/ttyS3";
+    serialPort->setPortName(serialPortPath);
+    qDebug() << "连接固定串口通道：" << serialPortPath;
     
     // 设置串口参数
     if (serialPort->open(QIODevice::ReadWrite)) {
@@ -56,10 +56,10 @@ void MainWindow::initSerialPort()
         // 连接串口数据接收信号槽
         connect(serialPort, &QSerialPort::readyRead, this, &MainWindow::onSerialDataReceived);
         
-        qDebug() << "串口" << portName << "打开成功，参数：波特率115200，8N1";
+        qDebug() << "串口打开成功，参数：波特率115200，8N1，权限可读可写。";
     }
     else {
-            qWarning() << "无法打开串口" << portName << "错误：" << serialPort->errorString();
+            qWarning() << "无法打开串口！" << "错误：" << serialPort->errorString();
     }
 }
 

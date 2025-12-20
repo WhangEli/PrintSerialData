@@ -16,15 +16,15 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <item>
-     <widget class="QLabel" name="dataDisplayLabel">
+     <widget class="QLabel" name="dataLabel">
       <property name="styleSheet">
        <string notr="true">font-size: 24px; font-weight: bold; color: #333; padding: 20px;</string>
       </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
-      </property>
       <property name="text">
        <string>等待数据...</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
       </property>
      </widget>
     </item>
