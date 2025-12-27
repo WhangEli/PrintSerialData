@@ -14,6 +14,8 @@ MainWindow::MainWindow(QWidget* parent)
     InitSendDataBtn();
 
     InitChart();
+
+    connect(serialPort, &QSerialPort::readyRead, this, &MainWindow::SendData);
 }
 
 void MainWindow::InitMainWindow()
