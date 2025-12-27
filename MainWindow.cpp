@@ -10,11 +10,11 @@ MainWindow::MainWindow(QWidget* parent)
     InitMainWindow();
     InitSerialPort();
     InitSendDataBtn();
+    InitCloseBtn();
     InitChart();
 
     connect(serialPort, &QSerialPort::readyRead, this, &MainWindow::UpdateData);
     connect(serialPort, &QSerialPort::readyRead, this, &MainWindow::SendData);
-    connect(this, &MainWindow::UpdateData, this, &MainWindow::UpdateChart);
 }
 
 void MainWindow::InitMainWindow()
@@ -61,6 +61,7 @@ void MainWindow::UpdateData()
                 dataPoints.removeFirst();
             }
         }
+        UpdateChart();
     }
 }
 
@@ -91,10 +92,19 @@ void MainWindow::InitSendDataBtn()
     connect(sendDataBtn, &QPushButton::clicked, this, &MainWindow::SendData);
 }
 
+void MainWindow::InitCloseBtn()
+{
+    QPushButton* closeBtn = new QPushButton("关闭", this);
+    topLayout -> addWidget(closeBtn);
+
+    connect(closeBtn, &QPushButton::clicked, this, &MainWindow::close);
+}
+
 void MainWindow::InitChart()
 {
-    splineSeries = new QSplineSeries();
-    splineSeries -> setName("串口数据");
+    lineSeries = new QLineSeries();
+    lineSeries -> setName("串口数据");
+    lineSeries -> setPointsVisible(true);
 
     axisX = new QDateTimeAxis();
     axisX -> setTitleText("时间");
@@ -105,11 +115,11 @@ void MainWindow::InitChart()
     axisY -> setRange(0, 255);
 
     QChart* chart = new QChart();
-    chart -> addSeries(splineSeries);
+    chart -> addSeries(lineSeries);
     chart -> addAxis(axisX, Qt::AlignBottom);
     chart -> addAxis(axisY, Qt::AlignLeft);
-    splineSeries -> attachAxis(axisX);
-    splineSeries -> attachAxis(axisY);
+    lineSeries -> attachAxis(axisX);
+    lineSeries -> attachAxis(axisY);
     chart -> legend() -> hide();
 
     chartView = new QChartView(chart);
@@ -121,11 +131,14 @@ void MainWindow::InitChart()
 
 void MainWindow::UpdateChart()
 {
-    splineSeries -> clear();
+    lineSeries -> clear();
 
     for (const QPointF& point : dataPoints) {
-        splineSeries -> append(point);
+        lineSeries -> append(point);
     }
+
+    qDeleteAll(dataLabels);
+    dataLabels.clear();
 
     if (!dataPoints.isEmpty()) {
         QDateTime minTime = QDateTime::fromMSecsSinceEpoch(dataPoints.first().x());
@@ -141,11 +154,28 @@ void MainWindow::UpdateChart()
         double padding = (maxValue - minValue) * 0.1;
         if (padding < 1) padding = 1;
         axisY -> setRange(minValue - padding, maxValue + padding);
+
+        QChart* chart = chartView -> chart();
+        for (const QPointF& point : dataPoints) {
+            QGraphicsTextItem* label = new QGraphicsTextItem(chart);
+            label -> setPlainText(QString::number((int)point.y()));
+            label -> setDefaultTextColor(Qt::black);
+            label -> setFont(QFont("Arial", 8));
+
+            QPointF chartPos = chart -> mapToPosition(point);
+            label -> setPos(chartPos.x() - 10, chartPos.y() - 20);
+
+            chart -> scene() -> addItem(label);
+            dataLabels.append(label);
+        }
     }
 }
 
 MainWindow::~MainWindow()
 {
+    qDeleteAll(dataLabels);
+    dataLabels.clear();
+
     if (serialPort && serialPort -> isOpen()) {
         serialPort -> close();
     }
