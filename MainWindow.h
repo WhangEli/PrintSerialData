@@ -24,16 +24,16 @@ class MainWindow;
 QT_END_NAMESPACE
 
 QT_CHARTS_BEGIN_NAMESPACE
-    class QChartView;
+class QChartView;
 class QChart;
 class QSplineSeries;
 class QDateTimeAxis;
 class QValueAxis;
 QT_CHARTS_END_NAMESPACE
 
-        QT_CHARTS_USE_NAMESPACE
+QT_CHARTS_USE_NAMESPACE
 
-    class MainWindow : public QMainWindow
+class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
