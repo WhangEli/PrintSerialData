@@ -4,6 +4,9 @@
 #include <QMainWindow>
 #include <QPushButton>
 #include <QDebug>
+#include <QSerialPort>
+#include <QLabel>
+#include <QVBoxLayout>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -16,23 +19,26 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
+    MainWindow(QWidget* parent = nullptr);
 
-    void InitSendDataBtn();
+    void InitMainWindow();
 
     void InitSerialPort();
+
+    void InitSendDataBtn();
 
     ~MainWindow();
 
 signals:
     void ReceiveData();
-    void ClickBtn();
 
-// public slots:
-//     void UpdateData();
-//     void SendData();
+ public slots:
+     void UpdateData();
+     void SendData();
 
 private:
-    Ui::MainWindow *ui;
+    Ui::MainWindow* ui;
+    QSerialPort* serialPort;
+    QVBoxLayout* mainLayout;
 };
 #endif // MAINWINDOW_H
