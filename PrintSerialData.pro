@@ -1,4 +1,4 @@
-QT       += core gui
+QT       += core gui charts serialport
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -9,14 +9,18 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    Core/ChartManager.cpp \
+    Core/SerialPortManager.cpp \
     main.cpp \
-    MainwWindow.cpp
+    MainWindow.cpp
 
 HEADERS += \
+    Core/ChartManager.h \
+    Core/SerialPortManager.h \
     MainWindow.h
 
 FORMS += \
-    mainwindow.ui
+    MainWindow.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
